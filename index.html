@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Jumping Game</title>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background-color: #e3f2fd;
+        }
+
+        .game-container {
+            position: relative;
+            width: 100%;
+            height: 200px;
+            overflow: hidden;
+            border: 2px solid #000;
+        }
+
+        .player {
+            position: absolute;
+            bottom: 0;
+            left: 50px;
+            width: 50px;
+            height: 50px;
+            background-color: #ff6f00;
+            border-radius: 10px;
+        }
+
+        .obstacle {
+            position: absolute;
+            bottom: 0;
+            right: -40px; /* 장애물이 더 넓은 영역에서 시작하도록 수정 */
+            width: 30px;
+            height: 70px; /* 장애물의 높이를 늘림 */
+            background-color: #d32f2f;
+            border-radius: 10px;
+            animation: moveObstacle 3s linear infinite;
+        }
+
+        @keyframes moveObstacle {
+            0% {
+                right: -40px;
+            }
+            100% {
+                right: 100%;
+            }
+        }
+
+        .jump {
+            animation: jump 0.6s ease-out;
+        }
+
+        @keyframes jump {
+            0% {
+                bottom: 0;
+            }
+            50% {
+                bottom: 150px; /* 점프의 최대 높이 */
+            }
+            100% {
+                bottom: 0;
+            }
+        }
+
+        .scoreboard {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: #000;
+            font-family: Arial, sans-serif;
+            font-size: 18px;
+            background-color: #fff;
+            padding: 10px;
+            border-radius: 5px;
+            box-shadow: 0 0 5px rgba(0, 0, 0, 0.3);
+        }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <div class="player" id="player"></div>
+        <div class="obstacle" id="obstacle"></div>
+        <div class="scoreboard">
+            <div>Score: <span id="score">0</span></div>
+            <div>High Score: <span id="high-score">0</span></div>
+        </div>
+    </div>
+    <script>
+        const player = document.getElementById('player');
+        const scoreElement = document.getElementById('score');
+        const highScoreElement = document.getElementById('high-score');
+        const obstacle = document.getElementById('obstacle');
+
+        let isJumping = false;
+        let score = 0;
+        let highScore = localStorage.getItem('highScore') || 0;
+
+        // Update high score display
+        highScoreElement.textContent = highScore;
+
+        function jump() {
+            if (!isJumping) {
+                isJumping = true;
+                player.classList.add('jump');
+                setTimeout(() => {
+                    player.classList.remove('jump');
+                    isJumping = false;
+                }, 600); // 점프 애니메이션과 동일한 시간
+            }
+        }
+
+        document.addEventListener('keydown', (event) => {
+            if (event.code === 'Space' || event.code === 'ArrowUp') {
+                jump();
+            }
+        });
+
+        function updateObstacleSpeed() {
+            // Calculate new speed based on score
+            let speed = 3 - Math.floor(score / 100) * 0.5; // 최소 속도는 1.0s
+            if (speed < 1) speed = 1; // 최소 속도 보장
+            obstacle.style.animation = `moveObstacle ${speed}s linear infinite`;
+        }
+
+        function checkCollision() {
+            const playerRect = player.getBoundingClientRect();
+            const obstacleRect = obstacle.getBoundingClientRect();
+
+            if (
+                playerRect.left < obstacleRect.left + obstacleRect.width &&
+                playerRect.left + playerRect.width > obstacleRect.left &&
+                playerRect.top < obstacleRect.top + obstacleRect.height &&
+                playerRect.height + playerRect.top > obstacleRect.top
+            ) {
+                // Game Over
+                if (score > highScore) {
+                    highScore = score;
+                    localStorage.setItem('highScore', highScore);
+                    highScoreElement.textContent = highScore;
+                }
+                alert('Game Over! Your score was ' + score);
+                window.location.reload();
+            }
+        }
+
+        function handleObstaclePass() {
+            const obstacleRect = obstacle.getBoundingClientRect();
+            const playerRect = player.getBoundingClientRect();
+
+            // 장애물이 화면을 벗어나기 전까지 점수를 올리기
+            if (obstacleRect.right < playerRect.left && obstacle.style.display !== 'none') {
+                score++;
+                scoreElement.textContent = score;
+                updateObstacleSpeed(); // 장애물 속도 업데이트
+
+                // 장애물이 화면을 벗어났으므로 다시 시작
+                obstacle.style.display = 'none'; // 장애물을 숨김
+                setTimeout(() => {
+                    obstacle.style.right = '-40px'; // 장애물 초기 위치로 재설정
+                    obstacle.style.display = 'block'; // 장애물을 다시 보이도록 설정
+                }, Math.random() * (3000 - 1500) + 1500); // 1.5초에서 3초 사이의 랜덤 시간 후 다시 생성
+            }
+        }
+
+        function startObstacleSpawn() {
+            setInterval(() => {
+                handleObstaclePass(); // 장애물 통과 체크
+                checkCollision(); // 충돌 체크
+            }, 100); // 게임 상태 업데이트 주기
+        }
+
+        // Initialize the game
+        startObstacleSpawn(); // 장애물 통과 및 충돌 체크 시작
+
+    </script>
+</body>
+</html>
